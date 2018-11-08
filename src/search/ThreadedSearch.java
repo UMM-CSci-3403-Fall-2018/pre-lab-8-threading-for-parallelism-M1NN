@@ -26,21 +26,18 @@ public class ThreadedSearch<T> implements Searcher<T>, Runnable {
      * You can assume that the list size is divisible by `numThreads`
      */
     public boolean search(T target, List<T> list) throws InterruptedException {
-        this.answer = new Answer();
-        ThreadedSearch[] searches = new ThreadedSearch[this.numThreads];
+        Answer sharedAnswer = new Answer();
         Thread[] threads = new Thread[this.numThreads];
-        for (int i = 0; i<numThreads; i++) {
-          if (this.answer.getAnswer() == true) {
-            break;
-          }
-          searches[i] = new ThreadedSearch(this.numThreads, target, list, ((this.list.length() * i)/numThreads), ((this.list.length() * (i+1))/numThreads), this.answer);
-          threads[i] = new Thread(searches[i]);
-          threads[i].start();
+        for (int i = 0; i < this.numThreads; i++) {
+            ThreadedSearch<T> threadSearch = new ThreadedSearch<>(this.numThreads, target, list, ((list.size() * i)/numThreads), ((list.size() * (i+1))/numThreads), sharedAnswer);
+            threads[i] = new Thread(threadSearch);
+            threads[i].start();
         }
 
-        for (int i = 0; i<numThreads; i++) {
-          threads[i].join;
+        for (int i=0; i < this.numThreads; ++i) {
+            threads[i].join();
         }
+
         /*
          * First construct an instance of the `Answer` inner class. This will
          * be how the threads you're about to create will "communicate". They
@@ -61,15 +58,24 @@ public class ThreadedSearch<T> implements Searcher<T>, Runnable {
          * threads, wait for them to all terminate, and then return the answer
          * in the shared `Answer` instance.
          */
-        return this.answer;
+        return sharedAnswer.getAnswer();
     }
 
     public void run() {
-        // Delete this `throw` when you actually implement this method.
-        throw new UnsupportedOperationException();
+        int i = this.begin;
+        while (i <= this.end && !this.answer.getAnswer()) {
+            for (T item : this.list) {
+                if (item.equals(this.target)) {
+                    this.answer.setAnswer(true);
+                    break;
+                }
+                i = i + 1;
+            }
+        }
+
     }
 
-    private class Answer {
+    public class Answer {
         private boolean answer = false;
 
         // In a more general setting you would typically want to synchronize
@@ -88,9 +94,7 @@ public class ThreadedSearch<T> implements Searcher<T>, Runnable {
         // the old value of answer with the new one, and no one will actually
         // call with any value other than `true`. In general, though, you do
         // need to synchronize update methods like this to avoid race conditions.
-        public synchronized void setAnswer(boolean newAnswer) {
-            answer = newAnswer;
-        }
+        public synchronized void setAnswer(boolean newAnswer) { answer = newAnswer; }
     }
 
 }
